@@ -19,7 +19,8 @@ def scrape_all():
         "news_paragraph": news_paragraph,
         "featured_image": featured_image(browser),
         "facts": mars_facts(),
-        "last_modified": dt.datetime.now()
+        "last_modified": dt.datetime.now(),
+        "hemispheres": mars_hemispheres(browser)
     }
 
     # Stop webdriver and return data
@@ -89,13 +90,65 @@ def mars_facts():
 
     except BaseException:
         return None
-
+    
     # Assign columns and set index of dataframe
     df.columns=['Description', 'Mars', 'Earth']
     df.set_index('Description', inplace=True)
 
     # Convert dataframe into HTML format, add bootstrap
     return df.to_html(classes="table table-striped")
+
+def mars_hemispheres(browser):
+    # scrape Mars hemispheres
+
+    #visit the URL 
+    url = 'https://marshemispheres.com/'
+    browser.visit(url)
+
+    #list to hold the images and titles.
+    hemisphere_image_urls = []
+    
+    #retrieve the image urls and titles for each hemisphere.
+    html = browser.html
+    result_soup = soup(html, 'html.parser')
+    hemispheres = result_soup.find_all('div', class_='item')
+    for hemisphere in hemispheres:
+        try:
+            # identify title
+            title = hemisphere.find('h3').text
+  
+            # identify link
+            link = hemisphere.find('a', class_='itemLink').get('href')
+
+            # use full link
+            full_url = url + link
+  
+            # visit full resolution image URL
+            browser.visit(full_url)
+            html = browser.html
+
+            try:
+                # convert to soup object
+                img_soup = soup(html, 'html.parser')
+                download = img_soup.find('div', class_='downloads')
+
+                # image href
+                img_url = url + download.find('a', target='_blank').get('href')
+
+                # store title and image URL to dictionary
+                hemisphere_image_urls.append({"title": title, "img_url": img_url})
+
+                #navigate back
+                browser.back()
+
+            except Exception as err:
+                print("error download: ", err)
+                return None
+
+        except Exception as excp:
+            print("exception: ", excp)
+            return None
+    return hemisphere_image_urls
 
 if __name__ == "__main__":
 
